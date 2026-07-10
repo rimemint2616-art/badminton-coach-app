@@ -15,6 +15,7 @@ targets:
     sources:
       - path: BadmintonCoachApp
     info:
+      path: Generated/Info.plist
       properties:
         UILaunchScreen: {}
         UIRequiresFullScreen: true
