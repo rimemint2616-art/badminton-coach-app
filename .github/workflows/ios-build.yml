@@ -1,0 +1,45 @@
+name: iOS Build & Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -switch /Applications/Xcode_16.app/Contents/Developer
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Show available iOS simulators
+        run: xcrun simctl list devices available
+
+      - name: Build for iPad Simulator
+        run: |
+          xcodebuild build \
+            -project BadmintonCoachApp.xcodeproj \
+            -scheme BadmintonCoachApp \
+            -destination "platform=iOS Simulator,name=iPad Pro 13-inch (M4),OS=latest" \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Run unit tests on iPad Simulator
+        run: |
+          xcodebuild test \
+            -project BadmintonCoachApp.xcodeproj \
+            -scheme BadmintonCoachApp \
+            -destination "platform=iOS Simulator,name=iPad Pro 13-inch (M4),OS=latest" \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO
