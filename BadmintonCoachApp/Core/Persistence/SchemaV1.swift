@@ -8,6 +8,7 @@ enum SchemaV1: VersionedSchema {
     static var models: [any PersistentModel.Type] {
         [
             Student.self,
+            GradeTag.self,
             PracticeSession.self,
             Match.self,
             Rally.self,

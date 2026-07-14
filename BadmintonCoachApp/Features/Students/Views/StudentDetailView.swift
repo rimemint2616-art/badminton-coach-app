@@ -22,7 +22,12 @@ struct StudentDetailView: View {
                 if let kana = student.nameKana, !kana.isEmpty {
                     LabeledContent("フリガナ", value: kana)
                 }
-                LabeledContent("レベル", value: student.level.displayName)
+                if let gradeTag = student.gradeTag {
+                    LabeledContent("学年", value: gradeTag.name)
+                }
+                if let rank = student.rank {
+                    LabeledContent("ランク", value: "#\(rank)")
+                }
                 if let hand = student.dominantHand {
                     LabeledContent("利き手", value: hand.displayName)
                 }
@@ -102,11 +107,7 @@ private struct MatchSummaryRow: View {
     let student: Student
 
     private var opponentName: String {
-        if match.player1 === student {
-            return match.player2?.name ?? "（不明）"
-        } else {
-            return match.player1?.name ?? "（不明）"
-        }
+        match.player1 === student ? match.player2DisplayName : match.player1DisplayName
     }
 
     var body: some View {

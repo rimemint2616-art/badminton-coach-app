@@ -24,7 +24,7 @@ struct FeedbackEditorView: View {
                 Section("対象") {
                     LabeledContent("生徒", value: student.name)
                     if let match {
-                        LabeledContent("紐づく試合", value: "\(match.player1?.name ?? "?") vs \(match.player2?.name ?? "?")")
+                        LabeledContent("紐づく試合", value: "\(match.player1DisplayName) vs \(match.player2DisplayName)")
                     }
                     if let session {
                         LabeledContent("紐づく練習", value: session.date.formatted(date: .abbreviated, time: .omitted))

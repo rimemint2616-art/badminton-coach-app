@@ -86,8 +86,8 @@ final class LiveTaggingViewModel {
         return viewModel
     }
 
-    var player1Name: String { match.player1?.name ?? "プレイヤー1" }
-    var player2Name: String { match.player2?.name ?? "プレイヤー2" }
+    var player1Name: String { match.player1DisplayName }
+    var player2Name: String { match.player2DisplayName }
 
     /// 次に記録するショットの打者側（シングルスはサーブから厳密に交互）。
     var sideForNextShot: MatchSide {

@@ -30,8 +30,17 @@ enum PDFReportGenerator {
         context.beginPage()
         let page = content().frame(width: pageSize.width, height: pageSize.height)
         let imageRenderer = ImageRenderer(content: page)
+        let cgContext = context.cgContext
         imageRenderer.render { _, renderInContext in
-            renderInContext(context.cgContext)
+            // UIGraphicsPDFRendererContextのCGContextは既にUIKit座標系（原点が左上）に
+            // 変換済みだが、ImageRenderer.renderのクロージャはPDFネイティブ座標系（原点が左下）を
+            // 前提にしているため、そのまま渡すと文字が上下反転して描画される。
+            // ここで一度上下反転させて座標系を合わせる。
+            cgContext.saveGState()
+            cgContext.translateBy(x: 0, y: pageSize.height)
+            cgContext.scaleBy(x: 1, y: -1)
+            renderInContext(cgContext)
+            cgContext.restoreGState()
         }
     }
 }

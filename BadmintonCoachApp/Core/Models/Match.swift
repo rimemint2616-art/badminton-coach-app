@@ -82,6 +82,11 @@ final class Match {
     var player1: Student?
     var player2: Student?
 
+    /// 生徒として登録されていない対外試合の相手などを表すための自由入力名。
+    /// player1/player2がnilのときのみ表示に使う。
+    var player1GuestName: String?
+    var player2GuestName: String?
+
     /// この試合が紐づく練習セッション（任意）。
     var session: PracticeSession?
 
@@ -98,6 +103,8 @@ final class Match {
         finalScoreSummary: [GameScore] = [],
         player1: Student? = nil,
         player2: Student? = nil,
+        player1GuestName: String? = nil,
+        player2GuestName: String? = nil,
         session: PracticeSession? = nil
     ) {
         self.id = id
@@ -108,6 +115,13 @@ final class Match {
         self.finalScoreSummary = finalScoreSummary
         self.player1 = player1
         self.player2 = player2
+        self.player1GuestName = player1GuestName
+        self.player2GuestName = player2GuestName
         self.session = session
     }
+
+    /// 表示用のプレイヤー名。生徒として登録されていれば生徒名、
+    /// 対外試合などでゲスト名だけ入力されていればそちらを、どちらもなければデフォルト名を返す。
+    var player1DisplayName: String { player1?.name ?? player1GuestName ?? "プレイヤー1" }
+    var player2DisplayName: String { player2?.name ?? player2GuestName ?? "プレイヤー2" }
 }

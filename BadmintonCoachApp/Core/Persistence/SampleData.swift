@@ -4,9 +4,15 @@ import SwiftData
 /// SwiftUI PreviewやUIテストで使うサンプルデータ。本番データには一切影響しない。
 enum SampleData {
     static func seed(into context: ModelContext) {
-        let taro = Student(name: "山田 太郎", nameKana: "ヤマダ タロウ", dominantHand: .right, level: .intermediate)
-        let hanako = Student(name: "佐藤 花子", nameKana: "サトウ ハナコ", dominantHand: .left, level: .advanced)
-        let jiro = Student(name: "鈴木 次郎", nameKana: "スズキ ジロウ", dominantHand: .right, level: .beginner)
+        GradeTag.seedDefaultsIfNeeded(in: context)
+        let gradeTags = (try? context.fetch(FetchDescriptor<GradeTag>(sortBy: [SortDescriptor(\.sortOrder)]))) ?? []
+        func gradeTag(named name: String) -> GradeTag? {
+            gradeTags.first { $0.name == name }
+        }
+
+        let taro = Student(name: "山田 太郎", nameKana: "ヤマダ タロウ", dominantHand: .right, gradeTag: gradeTag(named: "中学2年生"), rank: 1)
+        let hanako = Student(name: "佐藤 花子", nameKana: "サトウ ハナコ", dominantHand: .left, gradeTag: gradeTag(named: "高校1年生"), rank: 2)
+        let jiro = Student(name: "鈴木 次郎", nameKana: "スズキ ジロウ", dominantHand: .right, gradeTag: gradeTag(named: "中学1年生"), rank: 3)
 
         [taro, hanako, jiro].forEach { context.insert($0) }
 

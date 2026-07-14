@@ -11,7 +11,10 @@ final class ModelPersistenceTests: XCTestCase {
             migrationPlan: AppMigrationPlan.self,
             configurations: [configuration]
         )
-        return container.mainContext
+        // container.mainContext は @MainActor 隔離されており、XCTestの同期テストメソッドから
+        // 呼ぶとメインスレッド外で実行されてクラッシュすることがあるため、
+        // 隔離されていない ModelContext(container:) を使う。
+        return ModelContext(container)
     }
 
     func testStudentInsertAndFetch() throws {

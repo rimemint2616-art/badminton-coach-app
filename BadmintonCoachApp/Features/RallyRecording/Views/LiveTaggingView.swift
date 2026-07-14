@@ -14,13 +14,55 @@ struct LiveTaggingView: View {
         _viewModel = State(initialValue: viewModel)
     }
 
-    private var markers: [CourtShotMarker] {
-        viewModel.pendingShots.map { shot in
-            CourtShotMarker(
-                position: CGPoint(x: shot.courtX, y: shot.courtY),
-                color: shot.side == .player1 ? .red : .blue
-            )
+    /// 現在のゲームで確定済みのラリー（記録順）。
+    private var currentGameRallies: [Rally] {
+        viewModel.match.rallies
+            .filter { $0.gameNumber == viewModel.currentGameNumber }
+            .sorted { $0.orderIndex < $1.orderIndex }
+    }
+
+    /// コートに表示するショットの軌跡。
+    /// 直近1ラリー（＋記録中のラリー）は点+線、それより前のラリーは線のみにして
+    /// ラリーが増えても点だらけで見づらくならないようにする。
+    private var trails: [CourtRallyTrail] {
+        var result: [CourtRallyTrail] = []
+        let rallies = currentGameRallies
+        let recentCount = 1
+        let olderRallies = rallies.count > recentCount ? rallies.prefix(rallies.count - recentCount) : []
+        let recentRallies = rallies.suffix(recentCount)
+
+        for rally in olderRallies {
+            let points = rally.shots
+                .sorted { $0.orderIndex < $1.orderIndex }
+                .map { CourtRallyTrail.Point(position: CGPoint(x: $0.courtX, y: $0.courtY), color: .gray) }
+            guard points.count > 1 else { continue }
+            result.append(CourtRallyTrail(points: points, lineColor: .gray.opacity(0.4), showDots: false))
         }
+
+        for rally in recentRallies {
+            let points = rally.shots
+                .sorted { $0.orderIndex < $1.orderIndex }
+                .map {
+                    CourtRallyTrail.Point(
+                        position: CGPoint(x: $0.courtX, y: $0.courtY),
+                        color: $0.player === viewModel.match.player1 ? .red : .blue
+                    )
+                }
+            guard !points.isEmpty else { continue }
+            result.append(CourtRallyTrail(points: points, lineColor: .white.opacity(0.8), showDots: true))
+        }
+
+        if !viewModel.pendingShots.isEmpty {
+            let points = viewModel.pendingShots.map {
+                CourtRallyTrail.Point(
+                    position: CGPoint(x: $0.courtX, y: $0.courtY),
+                    color: $0.side == .player1 ? .red : .blue
+                )
+            }
+            result.append(CourtRallyTrail(points: points, lineColor: .yellow, showDots: true))
+        }
+
+        return result
     }
 
     var body: some View {
@@ -45,9 +87,10 @@ struct LiveTaggingView: View {
             .frame(maxWidth: 320)
 
             HStack(alignment: .top, spacing: 16) {
-                CourtDiagramView(markers: markers) { point in
+                CourtDiagramView(trails: trails) { point in
                     viewModel.selectCourtPosition(point)
                 }
+                .layoutPriority(1)
                 .overlay(alignment: .topLeading) {
                     if viewModel.pendingTapPoint != nil {
                         Text("ショット種類を選択してください")
@@ -61,8 +104,9 @@ struct LiveTaggingView: View {
                 ShotPaletteView(isEnabled: viewModel.pendingTapPoint != nil) { shotType in
                     viewModel.selectShotType(shotType)
                 }
-                .frame(width: 200)
+                .frame(width: 160)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             if viewModel.recordingMode == .quick && viewModel.canEndRally {
                 Stepper(
@@ -112,6 +156,16 @@ struct LiveTaggingView: View {
         .padding()
         .navigationTitle("ラリー記録")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    dismiss()
+                } label: {
+                    Label("中断して保存", systemImage: "pause.circle")
+                }
+                .disabled(!viewModel.pendingShots.isEmpty)
+            }
+        }
         .alert("ゲーム終了", isPresented: $viewModel.isGameOver) {
             Button("\(viewModel.player1Name) が先にサーブ") {
                 viewModel.startNextGame(firstServer: .player1)

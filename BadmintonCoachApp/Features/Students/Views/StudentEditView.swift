@@ -6,25 +6,29 @@ import SwiftData
 struct StudentEditView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Query(sort: [SortDescriptor(\GradeTag.sortOrder)]) private var allGradeTags: [GradeTag]
+    /// 直前に選んだ学年タグのID。新規追加フォームを開いたときの初期値として使い、
+    /// 同じ学年の生徒を何人も続けて登録するときの手間を減らす。
+    @AppStorage("lastUsedGradeTagID") private var lastUsedGradeTagIDRawValue = ""
 
     let student: Student?
 
     @State private var name: String
     @State private var nameKana: String
-    @State private var hasBirthdate: Bool
-    @State private var birthdate: Date
     @State private var dominantHand: DominantHand?
-    @State private var level: StudentLevel
+    @State private var gradeTag: GradeTag?
+    @State private var rankText: String
     @State private var notes: String
+    @State private var didJustAddAnother = false
+    @FocusState private var isNameFieldFocused: Bool
 
     init(student: Student?) {
         self.student = student
         _name = State(initialValue: student?.name ?? "")
         _nameKana = State(initialValue: student?.nameKana ?? "")
-        _hasBirthdate = State(initialValue: student?.birthdate != nil)
-        _birthdate = State(initialValue: student?.birthdate ?? .now)
         _dominantHand = State(initialValue: student?.dominantHand)
-        _level = State(initialValue: student?.level ?? .beginner)
+        _gradeTag = State(initialValue: student?.gradeTag)
+        _rankText = State(initialValue: student?.rank.map(String.init) ?? "")
         _notes = State(initialValue: student?.notes ?? "")
     }
 
@@ -32,15 +36,31 @@ struct StudentEditView: View {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    /// 非表示に設定されたタグはピッカーから外すが、既にその生徒に設定済みの場合は選択肢として残す
+    /// （非表示にしただけで既存データが見えなくなるのを防ぐため）。
+    private var availableGradeTags: [GradeTag] {
+        allGradeTags.filter { !$0.isHidden || $0.id == gradeTag?.id }
+    }
+
     var body: some View {
         NavigationStack {
             Form {
+                if didJustAddAnother {
+                    Section {
+                        Label("生徒を追加しました。続けて次の生徒を入力できます。", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    }
+                }
+
                 Section("基本情報") {
                     TextField("氏名", text: $name)
+                        .focused($isNameFieldFocused)
                     TextField("フリガナ", text: $nameKana)
-                    Toggle("生年月日を設定", isOn: $hasBirthdate)
-                    if hasBirthdate {
-                        DatePicker("生年月日", selection: $birthdate, displayedComponents: .date)
+                    Picker("学年", selection: $gradeTag) {
+                        Text("未設定").tag(GradeTag?.none)
+                        ForEach(availableGradeTags) { tag in
+                            Text(tag.name).tag(GradeTag?.some(tag))
+                        }
                     }
                 }
 
@@ -51,16 +71,31 @@ struct StudentEditView: View {
                             Text(hand.displayName).tag(DominantHand?.some(hand))
                         }
                     }
-                    Picker("レベル", selection: $level) {
-                        ForEach(StudentLevel.allCases) { level in
-                            Text(level.displayName).tag(level)
-                        }
-                    }
+                }
+
+                Section {
+                    TextField("ランク（数字が小さいほど上位）", text: $rankText)
+                        .keyboardType(.numberPad)
+                } header: {
+                    Text("ランク")
                 }
 
                 Section("メモ") {
                     TextEditor(text: $notes)
                         .frame(minHeight: 100)
+                }
+
+                if student == nil {
+                    Section {
+                        Button {
+                            saveAndAddAnother()
+                        } label: {
+                            Label("保存して続けて追加", systemImage: "person.badge.plus")
+                        }
+                        .disabled(!isValid)
+                    } footer: {
+                        Text("学年・利き手は次の生徒にも引き継がれるので、氏名だけ入力してすぐ次を登録できます。")
+                    }
                 }
             }
             .navigationTitle(student == nil ? "生徒を追加" : "生徒を編集")
@@ -73,33 +108,62 @@ struct StudentEditView: View {
                         .disabled(!isValid)
                 }
             }
+            .onAppear {
+                if student == nil && gradeTag == nil {
+                    gradeTag = lastUsedGradeTag()
+                }
+            }
         }
     }
 
+    private func lastUsedGradeTag() -> GradeTag? {
+        guard let uuid = UUID(uuidString: lastUsedGradeTagIDRawValue) else { return nil }
+        return allGradeTags.first { $0.id == uuid }
+    }
+
     private func save() {
+        persist()
+        dismiss()
+    }
+
+    private func saveAndAddAnother() {
+        persist()
+        name = ""
+        nameKana = ""
+        rankText = ""
+        notes = ""
+        didJustAddAnother = true
+        isNameFieldFocused = true
+    }
+
+    private func persist() {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedKana = nameKana.trimmingCharacters(in: .whitespacesAndNewlines)
-        let resolvedBirthdate: Date? = hasBirthdate ? birthdate : nil
+        let rank = Int(rankText.trimmingCharacters(in: .whitespacesAndNewlines))
 
         if let student {
             student.name = trimmedName
             student.nameKana = trimmedKana.isEmpty ? nil : trimmedKana
-            student.birthdate = resolvedBirthdate
             student.dominantHand = dominantHand
-            student.level = level
+            student.gradeTag = gradeTag
+            student.rank = rank
             student.notes = notes
         } else {
             let newStudent = Student(
                 name: trimmedName,
                 nameKana: trimmedKana.isEmpty ? nil : trimmedKana,
-                birthdate: resolvedBirthdate,
                 dominantHand: dominantHand,
-                level: level,
+                gradeTag: gradeTag,
+                rank: rank,
                 notes: notes
             )
             modelContext.insert(newStudent)
         }
-        dismiss()
+        try? modelContext.save()
+
+        if let gradeTag {
+            lastUsedGradeTagIDRawValue = gradeTag.id.uuidString
+        }
     }
 }
 

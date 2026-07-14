@@ -14,29 +14,15 @@ enum DominantHand: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-enum StudentLevel: String, Codable, CaseIterable, Identifiable {
-    case beginner, intermediate, advanced, competitive
-
-    var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .beginner: return "初級"
-        case .intermediate: return "中級"
-        case .advanced: return "上級"
-        case .competitive: return "選手"
-        }
-    }
-}
-
 @Model
 final class Student {
     var id: UUID
     var name: String
     var nameKana: String?
-    var birthdate: Date?
     var dominantHand: DominantHand?
-    var level: StudentLevel
+    var gradeTag: GradeTag?
+    /// チーム内の順位付けなどに使うランク。数字が小さいほど上位。未設定はnil。
+    var rank: Int?
     var joinedDate: Date
     var isArchived: Bool
     var notes: String
@@ -65,9 +51,9 @@ final class Student {
         id: UUID = UUID(),
         name: String,
         nameKana: String? = nil,
-        birthdate: Date? = nil,
         dominantHand: DominantHand? = nil,
-        level: StudentLevel = .beginner,
+        gradeTag: GradeTag? = nil,
+        rank: Int? = nil,
         joinedDate: Date = .now,
         isArchived: Bool = false,
         notes: String = "",
@@ -76,9 +62,9 @@ final class Student {
         self.id = id
         self.name = name
         self.nameKana = nameKana
-        self.birthdate = birthdate
         self.dominantHand = dominantHand
-        self.level = level
+        self.gradeTag = gradeTag
+        self.rank = rank
         self.joinedDate = joinedDate
         self.isArchived = isArchived
         self.notes = notes

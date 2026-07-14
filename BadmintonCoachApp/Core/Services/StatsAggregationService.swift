@@ -59,8 +59,8 @@ struct StudentReportData: Codable {
 
 enum StatsAggregationService {
     static func stats(for match: Match) -> MatchStats {
-        let player1Name = match.player1?.name ?? "プレイヤー1"
-        let player2Name = match.player2?.name ?? "プレイヤー2"
+        let player1Name = match.player1DisplayName
+        let player2Name = match.player2DisplayName
 
         let allShots = match.rallies.flatMap(\.shots)
 

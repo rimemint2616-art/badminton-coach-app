@@ -16,10 +16,32 @@ struct CourtShotMarker: Identifiable {
     }
 }
 
+/// ラリー中のショットを線で繋いで表示するための軌跡。
+/// showDots が false のときは線のみ（点は描かない）で、過去のラリーを控えめに表示するのに使う。
+struct CourtRallyTrail: Identifiable {
+    struct Point {
+        var position: CGPoint
+        var color: Color
+    }
+
+    let id: UUID
+    var points: [Point]
+    var lineColor: Color
+    var showDots: Bool
+
+    init(id: UUID = UUID(), points: [Point], lineColor: Color, showDots: Bool) {
+        self.id = id
+        self.points = points
+        self.lineColor = lineColor
+        self.showDots = showDots
+    }
+}
+
 /// バドミントンコートを縦（奥のベースライン〜手前のベースライン）に描画するView。
 /// タップで正規化座標(0...1)をコールバックする。
 struct CourtDiagramView: View {
     var markers: [CourtShotMarker] = []
+    var trails: [CourtRallyTrail] = []
     var onTap: ((CGPoint) -> Void)?
 
     var body: some View {
@@ -28,6 +50,7 @@ struct CourtDiagramView: View {
             ZStack {
                 Canvas { context, canvasSize in
                     drawCourt(context: context, size: canvasSize)
+                    drawTrails(context: context, size: canvasSize)
                 }
                 ForEach(markers) { marker in
                     Circle()
@@ -106,6 +129,36 @@ struct CourtDiagramView: View {
         centerLine.move(to: CGPoint(x: width / 2, y: height / 2 + shortServiceOffset))
         centerLine.addLine(to: CGPoint(x: width / 2, y: height))
         context.stroke(centerLine, with: mainLine, lineWidth: 2)
+    }
+
+    /// ラリーごとのショットを線で繋いで描画する。showDots が true のラリーだけ点も重ねて描く。
+    private func drawTrails(context: GraphicsContext, size: CGSize) {
+        for trail in trails {
+            let resolvedPoints = trail.points.map {
+                CGPoint(x: $0.position.x * size.width, y: $0.position.y * size.height)
+            }
+            guard !resolvedPoints.isEmpty else { continue }
+
+            if resolvedPoints.count > 1 {
+                var path = Path()
+                path.move(to: resolvedPoints[0])
+                for point in resolvedPoints.dropFirst() {
+                    path.addLine(to: point)
+                }
+                context.stroke(
+                    path,
+                    with: .color(trail.lineColor),
+                    style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
+                )
+            }
+
+            guard trail.showDots else { continue }
+            for (index, point) in resolvedPoints.enumerated() {
+                let rect = CGRect(x: point.x - 7, y: point.y - 7, width: 14, height: 14)
+                context.fill(Path(ellipseIn: rect), with: .color(trail.points[index].color))
+                context.stroke(Path(ellipseIn: rect), with: .color(.white), lineWidth: 1.5)
+            }
+        }
     }
 }
 

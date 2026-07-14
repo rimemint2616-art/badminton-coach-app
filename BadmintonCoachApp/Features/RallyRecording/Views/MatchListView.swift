@@ -48,7 +48,7 @@ private struct MatchRow: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text("\(match.player1?.name ?? "?") vs \(match.player2?.name ?? "?")")
+                Text("\(match.player1DisplayName) vs \(match.player2DisplayName)")
                     .font(.headline)
                 Text(match.date.formatted(date: .abbreviated, time: .shortened))
                     .font(.caption)

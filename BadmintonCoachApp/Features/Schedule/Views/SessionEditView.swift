@@ -66,7 +66,7 @@ struct SessionEditView: View {
                                 Spacer()
                                 if selectedAttendeeIDs.contains(student.id) {
                                     Image(systemName: "checkmark")
-                                        .foregroundStyle(.accent)
+                                        .foregroundStyle(Color.accentColor)
                                 }
                             }
                         }
