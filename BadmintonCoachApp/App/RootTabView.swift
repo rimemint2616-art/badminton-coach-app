@@ -19,9 +19,14 @@ struct RootTabView: View {
                     Label("ラリー記録", systemImage: "sportscourt.fill")
                 }
 
-            MenuLibraryView()
+            PlanListView()
                 .tabItem {
                     Label("練習メニュー", systemImage: "list.bullet.clipboard.fill")
+                }
+
+            SettingsView()
+                .tabItem {
+                    Label("設定", systemImage: "gearshape.fill")
                 }
         }
     }

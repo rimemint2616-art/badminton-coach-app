@@ -15,7 +15,9 @@ enum SchemaV1: VersionedSchema {
             Feedback.self,
             PracticeMenu.self,
             SessionDrillItem.self,
-            ReportRecord.self
+            ReportRecord.self,
+            PracticePlan.self,
+            PlanItem.self
         ]
     }
 }

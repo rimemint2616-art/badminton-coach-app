@@ -10,21 +10,72 @@ enum SampleData {
 
         [taro, hanako, jiro].forEach { context.insert($0) }
 
-        let smashMenu = PracticeMenu(
-            name: "スマッシュ連続打ち",
-            descriptionText: "ノック方式でスマッシュを連続で打ち込む基礎練習",
-            targetSkillTags: ["smash", "power"],
-            durationMinutes: 15,
-            difficultyLevel: .intermediate
+        // 体操（デフォルトメニュー: 毎回の練習の最初に自動追加）
+        let stretchMenu = PracticeMenu(
+            name: "ストレッチ・体操",
+            descriptionText: "全身のストレッチと準備運動",
+            durationMinutes: 10,
+            difficultyLevel: .beginner,
+            majorCategory: .warmup,
+            isDefaultMenu: true,
+            defaultOrderIndex: 0
         )
+        // フットワーク
         let footworkMenu = PracticeMenu(
             name: "4隅フットワーク",
             descriptionText: "コート4隅への移動を反復するフットワーク練習",
             targetSkillTags: ["footwork"],
             durationMinutes: 10,
-            difficultyLevel: .beginner
+            difficultyLevel: .beginner,
+            majorCategory: .footwork
         )
-        [smashMenu, footworkMenu].forEach { context.insert($0) }
+        // ノック練
+        let smashMenu = PracticeMenu(
+            name: "スマッシュ連続打ち",
+            descriptionText: "ノック方式でスマッシュを連続で打ち込む基礎練習",
+            targetSkillTags: ["smash", "power"],
+            durationMinutes: 15,
+            difficultyLevel: .intermediate,
+            majorCategory: .knock,
+            middleCategory: .singles
+        )
+        // パターン練
+        let patternMenu = PracticeMenu(
+            name: "全面フリー（半面攻撃）",
+            descriptionText: "決められた配球パターンで攻守を反復する",
+            durationMinutes: 15,
+            difficultyLevel: .advanced,
+            majorCategory: .pattern,
+            middleCategory: .doubles
+        )
+        // ゲーム練
+        let gameMenu = PracticeMenu(
+            name: "ダブルス実戦ゲーム",
+            descriptionText: "試合形式でのゲーム練習",
+            durationMinutes: 20,
+            difficultyLevel: .intermediate,
+            majorCategory: .game,
+            middleCategory: .doubles
+        )
+        [stretchMenu, footworkMenu, smashMenu, patternMenu, gameMenu].forEach { context.insert($0) }
+
+        // サンプルの本日の練習メニュー
+        let plan = PracticePlan(
+            title: "サンプル練習メニュー",
+            date: .now,
+            targetDurationMinutes: 90
+        )
+        context.insert(plan)
+        let planItem1 = PlanItem(
+            orderIndex: 0, kind: .drill, title: stretchMenu.name, menuID: stretchMenu.id,
+            majorCategory: .warmup, estimatedMinutes: 10, plan: plan
+        )
+        let planItem2 = PlanItem(
+            orderIndex: 1, kind: .drill, title: footworkMenu.name, menuID: footworkMenu.id,
+            majorCategory: .footwork, repUnit: .reps, countPerPerson: 20, sets: 3,
+            estimatedMinutes: 15, plan: plan
+        )
+        [planItem1, planItem2].forEach { context.insert($0); plan.items.append($0) }
 
         let session = PracticeSession(
             date: .now,
