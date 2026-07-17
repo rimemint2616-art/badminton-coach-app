@@ -15,6 +15,10 @@ struct StudentDetailView: View {
         student.feedbackEntries.sorted { $0.date > $1.date }
     }
 
+    private var sortedRankChallengeResults: [RankChallengeResultRecord] {
+        student.rankChallengeResults.sorted { $0.recordedAt > $1.recordedAt }
+    }
+
     var body: some View {
         List {
             Section("プロフィール") {
@@ -52,6 +56,14 @@ struct StudentDetailView: View {
                         NavigationLink(value: match) {
                             MatchSummaryRow(match: match, student: student)
                         }
+                    }
+                }
+            }
+
+            if !sortedRankChallengeResults.isEmpty {
+                Section("ランク戦履歴（\(sortedRankChallengeResults.count)）") {
+                    ForEach(sortedRankChallengeResults) { record in
+                        RankChallengeResultRow(record: record)
                     }
                 }
             }
@@ -122,6 +134,33 @@ private struct MatchSummaryRow: View {
             .font(.caption)
             .foregroundStyle(.secondary)
         }
+    }
+}
+
+private struct RankChallengeResultRow: View {
+    let record: RankChallengeResultRecord
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(record.eventName)
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text("\(record.position)位")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(Color.accentColor)
+            }
+            HStack {
+                Text(record.stageDisplayName)
+                Text("\(record.wins)勝\(record.losses)敗")
+                Text("得失点差 \(record.pointDifference >= 0 ? "+" : "")\(record.pointDifference)")
+                Spacer()
+                Text(record.recordedAt.formatted(date: .abbreviated, time: .omitted))
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 2)
     }
 }
 

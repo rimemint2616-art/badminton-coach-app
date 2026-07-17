@@ -41,3 +41,23 @@ extension GradeTag {
         set { colorHex = newValue.hexString }
     }
 }
+
+/// ランク戦の対戦表で、行の選手が勝った/列の選手が勝った時のマスの背景色。
+/// 設定タブのColorPickerで自由に変更できるよう、@AppStorageのキーとしてここで一元管理する。
+enum RankChallengeGridColors {
+    static let rowWinnerKey = "rankChallengeGrid.rowWinnerColorHex"
+    static let columnWinnerKey = "rankChallengeGrid.columnWinnerColorHex"
+    static let defaultRowWinnerHex = "#FFA94D"
+    static let defaultColumnWinnerHex = "#74C0FC"
+}
+
+extension SessionEventCategory {
+    /// スケジュール一覧で種別を色分け表示するための色。
+    var color: Color {
+        switch self {
+        case .practice: return Color(hex: "#4DABF7")
+        case .tournament: return Color(hex: "#F03E3E")
+        case .practiceMatch: return Color(hex: "#FF922B")
+        }
+    }
+}

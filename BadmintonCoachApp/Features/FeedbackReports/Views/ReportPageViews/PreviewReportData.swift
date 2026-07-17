@@ -44,6 +44,16 @@ enum PreviewReportData {
         shotMarkers: [
             ShotMarkerSnapshot(courtX: 0.3, courtY: 0.2, result: .winner, playerName: "山田 太郎"),
             ShotMarkerSnapshot(courtX: 0.7, courtY: 0.8, result: .unforcedError, playerName: "佐藤 花子")
+        ],
+        pointsWonByPlayer1: 42,
+        pointsWonByPlayer2: 33,
+        pointReasonBreakdownPlayer1: [
+            PointReasonBreakdownEntry(reason: "スマッシュ決まった", count: 18, percentage: 42.9),
+            PointReasonBreakdownEntry(reason: "相手のサーブミス", count: 12, percentage: 28.6)
+        ],
+        pointReasonBreakdownPlayer2: [
+            PointReasonBreakdownEntry(reason: "相手のミス", count: 15, percentage: 45.5),
+            PointReasonBreakdownEntry(reason: "プッシュ決めた", count: 10, percentage: 30.3)
         ]
     )
 }

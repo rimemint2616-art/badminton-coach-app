@@ -31,10 +31,12 @@ struct ScoreboardView: View {
             HStack(spacing: 4) {
                 if currentServer == side {
                     Image(systemName: "tennis.racket")
-                        .font(.caption)
+                        .font(.title3)
                 }
                 Text(name)
-                    .font(.headline)
+                    .font(.title2.bold())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
             Text("\(score)")
                 .font(.system(size: 44, weight: .bold, design: .rounded))

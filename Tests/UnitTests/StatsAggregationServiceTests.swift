@@ -28,7 +28,7 @@ final class StatsAggregationServiceTests: XCTestCase {
         context.insert(match)
 
         // ラリー1: 3打(serve, clear, smash)でplayer1のウィナー
-        let rally1 = Rally(orderIndex: 0, serverPlayer: player1, player1ScoreAfterRally: 1, player2ScoreAfterRally: 0, endReason: .winner, match: match)
+        let rally1 = Rally(orderIndex: 0, serverPlayer: player1, player1ScoreAfterRally: 1, player2ScoreAfterRally: 0, endReason: "スマッシュ決まった", match: match)
         context.insert(rally1)
         match.rallies.append(rally1)
         let shots1: [(ShotType, Student, ShotResult)] = [
@@ -43,7 +43,7 @@ final class StatsAggregationServiceTests: XCTestCase {
         }
 
         // ラリー2: 1打(serve)でplayer2側のエラー(サービスフォルト扱い)
-        let rally2 = Rally(orderIndex: 1, serverPlayer: player2, player1ScoreAfterRally: 2, player2ScoreAfterRally: 0, endReason: .unforcedError, match: match)
+        let rally2 = Rally(orderIndex: 1, serverPlayer: player2, player1ScoreAfterRally: 2, player2ScoreAfterRally: 0, endReason: "相手のサーブミス", match: match)
         context.insert(rally2)
         match.rallies.append(rally2)
         let errorShot = Shot(orderIndex: 0, player: player2, shotType: .serve, courtX: 0.1, courtY: 0.1, result: .unforcedError, rally: rally2)
@@ -74,7 +74,7 @@ final class StatsAggregationServiceTests: XCTestCase {
         let match = Match(player1: player1, player2: player2)
         context.insert(match)
 
-        let rally = Rally(orderIndex: 0, serverPlayer: player1, player1ScoreAfterRally: 1, player2ScoreAfterRally: 0, endReason: .winner, manualShotCount: 12, match: match)
+        let rally = Rally(orderIndex: 0, serverPlayer: player1, player1ScoreAfterRally: 1, player2ScoreAfterRally: 0, endReason: "スマッシュ決まった", manualShotCount: 12, match: match)
         context.insert(rally)
         match.rallies.append(rally)
         let shot = Shot(orderIndex: 0, player: player1, shotType: .smash, courtX: 0.5, courtY: 0.5, result: .winner, rally: rally)

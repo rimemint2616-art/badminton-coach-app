@@ -14,9 +14,16 @@ enum AppModelContainer {
                 migrationPlan: AppMigrationPlan.self,
                 configurations: [configuration]
             )
-            // 初回起動時のみ既定の学年タグを流し込む（AppModelContainer.previewと同じ理由でnonisolatedなContextを使う）。
+            // 初回起動時のみ既定の学年タグ・実際の部員名簿・実際のスケジュールを流し込む
+            // （AppModelContainer.previewと同じ理由でnonisolatedなContextを使う）。
             let context = ModelContext(container)
             GradeTag.seedDefaultsIfNeeded(in: context)
+            GradeTag.realignDefaultOrderIfNeeded(in: context)
+            StudentSeedData.seedIfNeeded(in: context)
+            ScheduleSeedData.seedJuly2026IfNeeded(in: context)
+            PointReasonTag.seedDefaultsIfNeeded(in: context)
+            CourtTag.seedDefaultsIfNeeded(in: context)
+            MenuCategoryTag.seedDefaultsIfNeeded(in: context)
             try? context.save()
             return container
         } catch {

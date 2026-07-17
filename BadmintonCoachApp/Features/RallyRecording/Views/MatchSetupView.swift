@@ -17,10 +17,11 @@ enum PlayerSelectionMode: String, CaseIterable, Identifiable {
     }
 }
 
-/// 試合開始前のセットアップ画面。対戦者・採点方式・先行サーブを選び、
-/// Matchを作成してLiveTaggingViewへ遷移する。
+/// 試合開始前のセットアップ画面。対戦者・採点方式・先行サーブ・記録方法を選び、
+/// Matchを作成して記録方法に応じた画面へ遷移する。
 struct MatchSetupView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
     @Query(sort: [SortDescriptor(\Student.name)]) private var allStudents: [Student]
 
     /// スケジュールから起動した場合、出席生徒だけに絞り込むために渡す。
@@ -34,6 +35,8 @@ struct MatchSetupView: View {
     @State private var player2GuestName: String = ""
     @State private var scoringFormat: ScoringFormat = .bestOf3To21
     @State private var firstServer: MatchSide = .player1
+    @State private var recordingStyle: MatchRecordingStyle = .flow
+    @State private var tag: MatchTag?
     @State private var createdMatch: Match?
 
     private var candidateStudents: [Student] {
@@ -44,6 +47,20 @@ struct MatchSetupView: View {
         }
         return base
     }
+
+    /// 生徒選択グリッドはランク順（未設定は末尾）で並べ、タップ1回で選べるようにする。
+    private var rankSortedCandidates: [Student] {
+        candidateStudents.sorted { lhs, rhs in
+            switch (lhs.rank, rhs.rank) {
+            case let (l?, r?): return l < r
+            case (nil, nil): return lhs.name < rhs.name
+            case (nil, _): return false
+            case (_, nil): return true
+            }
+        }
+    }
+
+    private let studentGridColumns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
 
     private var isValid: Bool {
         let player1Valid = player1Mode == .guest || player1 != nil
@@ -74,18 +91,43 @@ struct MatchSetupView: View {
                         label: "プレイヤー1",
                         mode: $player1Mode,
                         student: $player1,
-                        guestName: $player1GuestName
+                        guestName: $player1GuestName,
+                        excluding: player2
                     )
                     playerFields(
                         label: "プレイヤー2",
                         mode: $player2Mode,
                         student: $player2,
-                        guestName: $player2GuestName
+                        guestName: $player2GuestName,
+                        excluding: player1
                     )
                     if player1Mode == .student && player2Mode == .student && player1 != nil && player1 === player2 {
                         Text("同じ生徒を2回選ぶことはできません")
                             .font(.caption)
                             .foregroundStyle(.red)
+                    }
+                }
+
+                Section {
+                    Picker("記録方法", selection: $recordingStyle) {
+                        ForEach(MatchRecordingStyle.allCases) { style in
+                            Text(style.displayName).tag(style)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    Text(recordingStyle.description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } header: {
+                    Text("記録方法")
+                }
+
+                Section("タグ") {
+                    Picker("タグ", selection: $tag) {
+                        Text("なし").tag(MatchTag?.none)
+                        ForEach(MatchTag.allCases) { candidate in
+                            Text(candidate.displayName).tag(Optional(candidate))
+                        }
                     }
                 }
 
@@ -97,23 +139,28 @@ struct MatchSetupView: View {
                     }
                 }
 
-                Section("先行サーブ") {
-                    Picker("最初のサーバー", selection: $firstServer) {
-                        Text(resolvedPlayer1Name).tag(MatchSide.player1)
-                        Text(resolvedPlayer2Name).tag(MatchSide.player2)
+                if recordingStyle != .resultOnly {
+                    Section("先行サーブ") {
+                        Picker("最初のサーバー", selection: $firstServer) {
+                            Text(resolvedPlayer1Name).tag(MatchSide.player1)
+                            Text(resolvedPlayer2Name).tag(MatchSide.player2)
+                        }
+                        .pickerStyle(.segmented)
                     }
-                    .pickerStyle(.segmented)
                 }
             }
             .navigationTitle("試合セットアップ")
             .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("キャンセル") { dismiss() }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("試合開始") { startMatch() }
                         .disabled(!isValid)
                 }
             }
             .navigationDestination(item: $createdMatch) { match in
-                LiveTaggingView(match: match, modelContext: modelContext, firstServer: firstServer)
+                MatchRecordingView(match: match, modelContext: modelContext, firstServer: firstServer)
             }
         }
     }
@@ -123,7 +170,8 @@ struct MatchSetupView: View {
         label: String,
         mode: Binding<PlayerSelectionMode>,
         student: Binding<Student?>,
-        guestName: Binding<String>
+        guestName: Binding<String>,
+        excluding otherSelection: Student?
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(label)
@@ -139,19 +187,56 @@ struct MatchSetupView: View {
             .labelsHidden()
 
             if mode.wrappedValue == .student {
-                Picker(label, selection: student) {
-                    Text("選択してください").tag(Student?.none)
-                    ForEach(candidateStudents) { candidate in
-                        Text(candidate.name).tag(Student?.some(candidate))
+                LazyVGrid(columns: studentGridColumns, spacing: 8) {
+                    ForEach(rankSortedCandidates) { candidate in
+                        studentChip(
+                            candidate: candidate,
+                            isSelected: student.wrappedValue?.id == candidate.id,
+                            isDisabled: otherSelection?.id == candidate.id
+                        ) {
+                            student.wrappedValue = (student.wrappedValue?.id == candidate.id) ? nil : candidate
+                        }
                     }
                 }
-                .labelsHidden()
             } else {
                 TextField("名前（対外選手など、空欄でも開始できます）", text: guestName)
                     .textFieldStyle(.roundedBorder)
             }
         }
         .padding(.vertical, 4)
+    }
+
+    /// ランク番号付きの生徒選択チップ。タップ1回で選択/選択解除できる。
+    /// 背景色は学年タグの色を反映し、一覧タブと見た目を揃えて見分けやすくする。
+    private func studentChip(candidate: Student, isSelected: Bool, isDisabled: Bool, action: @escaping () -> Void) -> some View {
+        let tagColor = candidate.gradeTag?.color ?? Color.secondary
+        return Button(action: action) {
+            HStack(spacing: 4) {
+                if let rank = candidate.rank {
+                    Text("#\(rank)")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(isSelected ? .white.opacity(0.85) : tagColor)
+                }
+                Text(candidate.name)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .foregroundStyle(isSelected ? .white : .primary)
+            .background(
+                isSelected ? tagColor : tagColor.opacity(0.16),
+                in: RoundedRectangle(cornerRadius: 10)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(tagColor.opacity(isSelected ? 0 : 0.5), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .opacity(isDisabled ? 0.35 : 1)
+        .disabled(isDisabled)
     }
 
     private func startMatch() {
@@ -163,6 +248,8 @@ struct MatchSetupView: View {
             matchType: .singles,
             scoringFormat: scoringFormat,
             status: .inProgress,
+            recordingStyle: recordingStyle,
+            tag: tag,
             player1: player1Mode == .student ? player1 : nil,
             player2: player2Mode == .student ? player2 : nil,
             player1GuestName: player1Mode == .guest && !trimmedGuest1.isEmpty ? trimmedGuest1 : nil,

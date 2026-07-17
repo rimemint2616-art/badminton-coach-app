@@ -1,53 +1,27 @@
 import Foundation
 import SwiftData
-import SwiftUI
 
-enum RecordingMode: String, CaseIterable, Identifiable {
-    case detailed
-    case quick
-
-    var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .detailed: return "詳細"
-        case .quick: return "簡易"
-        }
-    }
-}
-
-enum RallyEndKind {
-    case winner
-    case error
-}
-
-/// 未確定のショット。ラリーが終わるまではSwiftDataへ保存せず、この配列だけで保持する。
-/// これにより「ショット単位のUndo」がSwiftDataの保存を伴わず軽量に行える。
-struct PendingShot: Identifiable {
-    let id = UUID()
-    var orderIndex: Int
-    var side: MatchSide
-    var shotType: ShotType
-    var courtX: Double
-    var courtY: Double
-    var result: ShotResult = .inPlay
-}
-
+/// 「流れ」モード用のビューモデル。LiveTaggingViewModelと違い、ショットの種類や
+/// コート上の位置は記録せず、ポイントごとの得点経過だけをRallyとして保存する。
 @Observable
-final class LiveTaggingViewModel {
+final class FlowScoringViewModel {
     let match: Match
     private let modelContext: ModelContext
 
-    var recordingMode: RecordingMode = .detailed
     var currentGameNumber: Int = 1
     var player1Score: Int = 0
     var player2Score: Int = 0
     var gamesWonByPlayer1: Int = 0
     var gamesWonByPlayer2: Int = 0
     var currentServer: MatchSide
-    var pendingShots: [PendingShot] = []
-    var pendingTapPoint: CGPoint?
-    var quickModeShotCount: Int = 1
+
+    /// 直前にポイントを記録したRally。ポイントボタンをタップした直後に理由候補を
+    /// 選んでもらい、このRallyへ後付けでタグ付けするために保持しておく。
+    private(set) var lastRecordedRally: Rally?
+
+    /// 次のゲームの先行サーバー。シングルスは前ゲームの勝者が次のサーブ、というルールに
+    /// 従い、ゲーム終了時に自動でセットする（コーチに毎回聞かない）。
+    private var nextGameServer: MatchSide = .player1
 
     var isGameOver = false
     var isMatchOver = false
@@ -59,8 +33,8 @@ final class LiveTaggingViewModel {
     }
 
     /// 記録済みのラリーから状態を復元して再開する（「続きを記録」用）。
-    static func resuming(match: Match, modelContext: ModelContext) -> LiveTaggingViewModel {
-        let viewModel = LiveTaggingViewModel(match: match, modelContext: modelContext)
+    static func resuming(match: Match, modelContext: ModelContext) -> FlowScoringViewModel {
+        let viewModel = FlowScoringViewModel(match: match, modelContext: modelContext)
 
         let completedGames = match.finalScoreSummary
         viewModel.gamesWonByPlayer1 = completedGames.filter { $0.player1Score > $0.player2Score }.count
@@ -74,6 +48,7 @@ final class LiveTaggingViewModel {
         if let last = currentGameRallies.last {
             viewModel.player1Score = last.player1ScoreAfterRally
             viewModel.player2Score = last.player2ScoreAfterRally
+            viewModel.lastRecordedRally = last
             if let previous = currentGameRallies.dropLast().last {
                 let player1Gained = last.player1ScoreAfterRally > previous.player1ScoreAfterRally
                 viewModel.currentServer = player1Gained ? .player1 : .player2
@@ -81,6 +56,9 @@ final class LiveTaggingViewModel {
                 let player1Gained = last.player1ScoreAfterRally > 0
                 viewModel.currentServer = player1Gained ? .player1 : .player2
             }
+        } else if let lastCompletedGame = completedGames.last {
+            // 次のゲームがまだ始まっていない場合は、前のゲームの勝者を次のサーブとする。
+            viewModel.currentServer = lastCompletedGame.player1Score > lastCompletedGame.player2Score ? .player1 : .player2
         }
 
         return viewModel
@@ -89,45 +67,16 @@ final class LiveTaggingViewModel {
     var player1Name: String { match.player1DisplayName }
     var player2Name: String { match.player2DisplayName }
 
-    /// 次に記録するショットの打者側（シングルスはサーブから厳密に交互）。
-    var sideForNextShot: MatchSide {
-        pendingShots.count % 2 == 0 ? currentServer : currentServer.opposite
+    private var currentGameRallies: [Rally] {
+        match.rallies
+            .filter { $0.gameNumber == currentGameNumber }
+            .sorted { $0.orderIndex < $1.orderIndex }
     }
 
-    var canEndRally: Bool { !pendingShots.isEmpty }
-
-    func selectCourtPosition(_ point: CGPoint) {
-        pendingTapPoint = point
-    }
-
-    func selectShotType(_ shotType: ShotType) {
-        guard let point = pendingTapPoint else { return }
-        let shot = PendingShot(
-            orderIndex: pendingShots.count,
-            side: sideForNextShot,
-            shotType: shotType,
-            courtX: point.x,
-            courtY: point.y
-        )
-        pendingShots.append(shot)
-        pendingTapPoint = nil
-    }
-
-    func undoLastPendingShot() {
-        guard !pendingShots.isEmpty else { return }
-        pendingShots.removeLast()
-    }
-
-    /// ポイント終了を記録し、Rally + Shotを永続化してスコア・サーブ権を更新する。
-    func endRally(kind: RallyEndKind) {
-        guard let lastIndex = pendingShots.indices.last else { return }
-
-        pendingShots[lastIndex].result = (kind == .winner) ? .winner : .unforcedError
-        let decidingShot = pendingShots[lastIndex]
-        let pointWinnerSide: MatchSide = (kind == .winner) ? decidingShot.side : decidingShot.side.opposite
-        let endReason: RallyEndReason = (kind == .winner) ? .winner : .unforcedError
-
-        if pointWinnerSide == .player1 {
+    /// ポイントを獲得した側を記録し、Rallyとして保存する（ショット情報は残さない）。
+    /// reasonにはそのポイントが決まった理由（設定タブで管理するタグの名前）を任意で記録できる。
+    func awardPoint(to side: MatchSide, reason: String? = nil) {
+        if side == .player1 {
             player1Score += 1
         } else {
             player2Score += 1
@@ -139,33 +88,23 @@ final class LiveTaggingViewModel {
             serverPlayer: currentServer == .player1 ? match.player1 : match.player2,
             player1ScoreAfterRally: player1Score,
             player2ScoreAfterRally: player2Score,
-            endReason: endReason,
-            manualShotCount: recordingMode == .quick ? max(quickModeShotCount, pendingShots.count) : nil,
+            endReason: reason,
             match: match
         )
         modelContext.insert(rally)
         match.rallies.append(rally)
+        lastRecordedRally = rally
 
-        for pending in pendingShots {
-            let shot = Shot(
-                orderIndex: pending.orderIndex,
-                player: pending.side == .player1 ? match.player1 : match.player2,
-                shotType: pending.shotType,
-                courtX: pending.courtX,
-                courtY: pending.courtY,
-                result: pending.result,
-                rally: rally
-            )
-            modelContext.insert(shot)
-            rally.shots.append(shot)
-        }
-
-        pendingShots.removeAll()
-        pendingTapPoint = nil
-        quickModeShotCount = 1
-        currentServer = ScoringRulesEngine.nextServer(rallyWinner: pointWinnerSide)
-
+        currentServer = ScoringRulesEngine.nextServer(rallyWinner: side)
         evaluateGameAndMatchCompletion()
+        try? modelContext.save()
+    }
+
+    /// 直前に記録したポイントへ、あとから理由を付ける（ポイントボタンをタップした直後に
+    /// 表示される理由候補から選んだ場合に呼ばれる）。
+    func tagLastPoint(reason: String) {
+        guard let rally = lastRecordedRally else { return }
+        rally.endReason = reason
         try? modelContext.save()
     }
 
@@ -185,36 +124,30 @@ final class LiveTaggingViewModel {
             GameScore(gameNumber: currentGameNumber, player1Score: player1Score, player2Score: player2Score)
         )
 
-        if let matchWinner = ScoringRulesEngine.matchWinner(
+        if ScoringRulesEngine.matchWinner(
             gamesWonByPlayer1: gamesWonByPlayer1,
             gamesWonByPlayer2: gamesWonByPlayer2,
             format: match.scoringFormat
-        ) {
+        ) != nil {
             isMatchOver = true
             match.status = .completed
-            _ = matchWinner
         } else {
+            // シングルスは前ゲームの勝者が次のゲームの先行サーブになるため、確認せず自動で決める。
+            nextGameServer = gameWinner
             isGameOver = true
         }
     }
 
-    func startNextGame(firstServer: MatchSide) {
+    func startNextGame() {
         currentGameNumber += 1
         player1Score = 0
         player2Score = 0
-        currentServer = firstServer
+        currentServer = nextGameServer
         isGameOver = false
     }
 
-    /// 直近のラリーを丸ごと取り消す（ShotもRallyのcascadeでまとめて削除される）。
-    /// スコアは残っているラリーの scoreAfterRally から復元するので再計算ロジックを持たない。
-    /// 取り消すラリーがゲームを決めたラリーだった場合は finalScoreSummary / 獲得ゲーム数も巻き戻す。
-    /// （ゲーム境界をまたいだ取り消し、つまり次のゲームを開始した後に前のゲーム最後のラリーを
-    /// 取り消すことはMVPでは未対応）
-    func undoLastRally() {
-        let currentGameRallies = match.rallies
-            .filter { $0.gameNumber == currentGameNumber }
-            .sorted { $0.orderIndex < $1.orderIndex }
+    /// 直近のポイントを取り消す。LiveTaggingViewModel.undoLastRallyと同じ考え方。
+    func undoLastPoint() {
         guard let last = currentGameRallies.last else { return }
 
         if let recordedGameIndex = match.finalScoreSummary.firstIndex(where: { $0.gameNumber == last.gameNumber }) {
@@ -229,6 +162,7 @@ final class LiveTaggingViewModel {
 
         match.rallies.removeAll { $0.id == last.id }
         modelContext.delete(last)
+        lastRecordedRally = currentGameRallies.last
 
         let remaining = currentGameRallies.dropLast()
         if let previous = remaining.last {
@@ -249,8 +183,8 @@ final class LiveTaggingViewModel {
     }
 }
 
-extension LiveTaggingViewModel: Hashable {
-    static func == (lhs: LiveTaggingViewModel, rhs: LiveTaggingViewModel) -> Bool {
+extension FlowScoringViewModel: Hashable {
+    static func == (lhs: FlowScoringViewModel, rhs: FlowScoringViewModel) -> Bool {
         lhs === rhs
     }
 

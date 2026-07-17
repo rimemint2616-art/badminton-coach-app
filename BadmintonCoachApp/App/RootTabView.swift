@@ -9,7 +9,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         switch self {
         case .students: return "生徒"
         case .schedule: return "スケジュール"
-        case .rally: return "ラリー記録"
+        case .rally: return "試合"
         case .menu: return "練習メニュー"
         case .settings: return "設定"
         }
@@ -19,7 +19,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         switch self {
         case .students: return "person.2.fill"
         case .schedule: return "calendar"
-        case .rally: return "sportscourt.fill"
+        case .rally: return "figure.badminton"
         case .menu: return "list.bullet.clipboard.fill"
         case .settings: return "gearshape.fill"
         }
@@ -32,6 +32,10 @@ enum AppTab: String, CaseIterable, Identifiable {
 struct RootTabView: View {
     @AppStorage(AppTextSize.storageKey) private var appTextSizeRawValue: String = AppTextSize.large.rawValue
     @State private var selectedTab: AppTab = .students
+    /// スケジュールタブがタップされるたびに増やすカウンタ。既にスケジュールタブを
+    /// 開いている状態で再度タップした場合も（selectedTabは変化しないため）今日の
+    /// 日付までスクロールし直せるようにするためのトリガー。
+    @State private var scheduleTabTapCount = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,6 +51,9 @@ struct RootTabView: View {
             ForEach(AppTab.allCases) { tab in
                 Button {
                     selectedTab = tab
+                    if tab == .schedule {
+                        scheduleTabTapCount += 1
+                    }
                 } label: {
                     VStack(spacing: 6) {
                         Image(systemName: tab.systemImage)
@@ -78,7 +85,7 @@ struct RootTabView: View {
             StudentListView()
                 .opacity(selectedTab == .students ? 1 : 0)
                 .allowsHitTesting(selectedTab == .students)
-            ScheduleAgendaView()
+            ScheduleAgendaView(scrollToTodayTrigger: scheduleTabTapCount)
                 .opacity(selectedTab == .schedule ? 1 : 0)
                 .allowsHitTesting(selectedTab == .schedule)
             MatchListView()

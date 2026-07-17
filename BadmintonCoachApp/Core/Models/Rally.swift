@@ -1,26 +1,6 @@
 import Foundation
 import SwiftData
 
-enum RallyEndReason: String, Codable, CaseIterable, Identifiable {
-    case winner
-    case unforcedError
-    case forcedError
-    case serviceFault
-    case let_
-
-    var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .winner: return "ウィナー"
-        case .unforcedError: return "アンフォーストエラー"
-        case .forcedError: return "フォーストエラー"
-        case .serviceFault: return "サービスフォルト"
-        case .let_: return "レット"
-        }
-    }
-}
-
 @Model
 final class Rally {
     var id: UUID
@@ -33,7 +13,9 @@ final class Rally {
     /// ラリー終了直後のスコア（プレイヤー1, プレイヤー2）。再計算せず直接保持する。
     var player1ScoreAfterRally: Int
     var player2ScoreAfterRally: Int
-    var endReason: RallyEndReason?
+    /// ポイントが決まった理由（設定タブで管理するPointReasonTagの名前をそのまま保存する）。
+    /// タグを後から改名・削除しても過去の記録は変わらないよう、関係ではなく文字列で持つ。
+    var endReason: String?
     /// 簡易モードで記録した際の手動打数。詳細モードでは常にnil（shots.countが正）。
     var manualShotCount: Int?
 
@@ -51,7 +33,7 @@ final class Rally {
         serverPlayer: Student? = nil,
         player1ScoreAfterRally: Int = 0,
         player2ScoreAfterRally: Int = 0,
-        endReason: RallyEndReason? = nil,
+        endReason: String? = nil,
         manualShotCount: Int? = nil,
         match: Match? = nil
     ) {

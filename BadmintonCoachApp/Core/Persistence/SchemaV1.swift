@@ -16,7 +16,17 @@ enum SchemaV1: VersionedSchema {
             Feedback.self,
             PracticeMenu.self,
             SessionDrillItem.self,
-            ReportRecord.self
+            ReportRecord.self,
+            RankChallengeEvent.self,
+            RankChallengePairing.self,
+            PointReasonTag.self,
+            RankChallengeResultRecord.self,
+            CourtTag.self,
+            MenuSection.self,
+            MenuSectionItem.self,
+            MenuCategoryTag.self,
+            MenuTemplate.self,
+            MenuTemplateItem.self
         ]
     }
 }

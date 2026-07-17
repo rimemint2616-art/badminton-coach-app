@@ -8,6 +8,7 @@ struct MenuLibraryView: View {
     @State private var searchText = ""
     @State private var selectedTag: String?
     @State private var isPresentingNewMenu = false
+    @State private var isPresentingMenuCreation = false
 
     private var allTags: [String] {
         Array(Set(allMenus.flatMap(\.targetSkillTags))).sorted()
@@ -22,6 +23,19 @@ struct MenuLibraryView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                Button {
+                    isPresentingMenuCreation = true
+                } label: {
+                    Label("メニューを作る", systemImage: "square.and.pencil")
+                        .font(.title3.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .foregroundStyle(.white)
+                        .background(Color.accentColor, in: RoundedRectangle(cornerRadius: Theme.cornerRadius))
+                }
+                .padding(.horizontal)
+                .padding(.top, 8)
+
                 if !allTags.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack {
@@ -82,6 +96,9 @@ struct MenuLibraryView: View {
                 NavigationStack {
                     MenuEditView(menu: nil)
                 }
+            }
+            .sheet(isPresented: $isPresentingMenuCreation) {
+                PracticeMenuCreationView()
             }
         }
     }

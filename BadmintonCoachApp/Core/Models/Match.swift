@@ -49,6 +49,29 @@ enum ScoringFormat: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+/// 試合をどの粒度で記録するか。セットアップ画面で選び、Matchに保存しておくことで
+/// 「続きを記録」時にどの画面へ戻ればよいか判断できるようにする。
+enum MatchRecordingStyle: String, Codable, CaseIterable, Identifiable {
+    case resultOnly
+    case flow
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .resultOnly: return "結果のみ"
+        case .flow: return "流れ"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .resultOnly: return "各ゲームの最終スコアだけをまとめて入力します"
+        case .flow: return "ポイントごとの得点経過をその場で記録します"
+        }
+    }
+}
+
 enum MatchStatus: String, Codable, CaseIterable, Identifiable {
     case inProgress, completed
 
@@ -58,6 +81,31 @@ enum MatchStatus: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .inProgress: return "試合中"
         case .completed: return "終了"
+        }
+    }
+}
+
+/// 試合の種別タグ。ランク戦から作られた試合には、対応する段階のタグが自動で付く。
+enum MatchTag: String, Codable, CaseIterable, Identifiable {
+    case gamePractice
+    case practiceMatch
+    case rankChallengePreliminary
+    case rankChallengeFinals
+    case rankChallengePromotion
+    case tournamentTeam
+    case tournamentIndividual
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .gamePractice: return "ゲーム練"
+        case .practiceMatch: return "練習試合"
+        case .rankChallengePreliminary: return "ランク戦(予選)"
+        case .rankChallengeFinals: return "ランク戦(決勝)"
+        case .rankChallengePromotion: return "ランク戦(入れ替え戦)"
+        case .tournamentTeam: return "大会(団体戦)"
+        case .tournamentIndividual: return "大会(個人戦)"
         }
     }
 }
@@ -77,6 +125,9 @@ final class Match {
     var scoringFormat: ScoringFormat
     var status: MatchStatus
     var finalScoreSummary: [GameScore]
+    var recordingStyle: MatchRecordingStyle
+    /// 試合の種別タグ（ゲーム練・練習試合・ランク戦(予選)など）。未設定はnil。
+    var tag: MatchTag?
 
     /// プレイヤー1。Match削除時にStudentは消えない（Student側の.nullifyで管理）。
     var player1: Student?
@@ -90,6 +141,9 @@ final class Match {
     /// この試合が紐づく練習セッション（任意）。
     var session: PracticeSession?
 
+    /// この試合がランク戦の対戦表セルから開始された場合の、紐づく組み合わせ（任意）。
+    var rankChallengePairing: RankChallengePairing?
+
     /// この試合のラリー記録。Match削除時にRallyもまとめて削除（.cascade）。
     @Relationship(deleteRule: .cascade, inverse: \Rally.match)
     var rallies: [Rally] = []
@@ -101,6 +155,8 @@ final class Match {
         scoringFormat: ScoringFormat = .bestOf3To21,
         status: MatchStatus = .inProgress,
         finalScoreSummary: [GameScore] = [],
+        recordingStyle: MatchRecordingStyle = .flow,
+        tag: MatchTag? = nil,
         player1: Student? = nil,
         player2: Student? = nil,
         player1GuestName: String? = nil,
@@ -113,6 +169,8 @@ final class Match {
         self.scoringFormat = scoringFormat
         self.status = status
         self.finalScoreSummary = finalScoreSummary
+        self.recordingStyle = recordingStyle
+        self.tag = tag
         self.player1 = player1
         self.player2 = player2
         self.player1GuestName = player1GuestName

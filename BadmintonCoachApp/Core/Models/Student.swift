@@ -47,6 +47,10 @@ final class Student {
     @Relationship(deleteRule: .nullify, inverse: \ReportRecord.student)
     var reportRecords: [ReportRecord] = []
 
+    /// この生徒のランク戦成績履歴（反映のたびに1件ずつ残るスナップショット）。
+    @Relationship(deleteRule: .cascade, inverse: \RankChallengeResultRecord.student)
+    var rankChallengeResults: [RankChallengeResultRecord] = []
+
     init(
         id: UUID = UUID(),
         name: String,
