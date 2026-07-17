@@ -19,6 +19,8 @@ enum AppModelContainer {
     }()
 
     /// SwiftUI Preview / テスト用のインメモリコンテナ。サンプルデータを流し込んで使う。
+    /// mainContext は @MainActor 隔離のため、シード処理を含むこのプロパティも @MainActor にする。
+    @MainActor
     static var preview: ModelContainer = {
         let configuration = ModelConfiguration(
             schema: Schema(SchemaV1.models),
