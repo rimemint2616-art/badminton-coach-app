@@ -39,58 +39,10 @@ struct SessionEditView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("日時") {
-                    DatePicker("日付", selection: $date, displayedComponents: .date)
-                    DatePicker("開始時刻", selection: $startTime, displayedComponents: .hourAndMinute)
-                    DatePicker("終了時刻", selection: $endTime, displayedComponents: .hourAndMinute)
-                }
-
-                Section("詳細") {
-                    TextField("場所", text: $location)
-                    Picker("種別", selection: $sessionType) {
-                        ForEach(SessionType.allCases) { type in
-                            Text(type.displayName).tag(type)
-                        }
-                    }
-                    TextEditor(text: $notes)
-                        .frame(minHeight: 80)
-                }
-
-                Section("出席者") {
-                    ForEach(activeStudents) { student in
-                        Button {
-                            toggleAttendee(student)
-                        } label: {
-                            HStack {
-                                Text(student.name)
-                                Spacer()
-                                if selectedAttendeeIDs.contains(student.id) {
-                                    Image(systemName: "checkmark")
-                                        .foregroundStyle(.accent)
-                                }
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.primary)
-                    }
-                }
-
-                Section("練習メニュー") {
-                    ForEach(drillSelections) { menu in
-                        Text(menu.name)
-                    }
-                    .onDelete { offsets in
-                        drillSelections.remove(atOffsets: offsets)
-                    }
-                    .onMove { source, destination in
-                        drillSelections.move(fromOffsets: source, toOffset: destination)
-                    }
-                    Button {
-                        isPresentingMenuPicker = true
-                    } label: {
-                        Label("メニューを追加", systemImage: "plus")
-                    }
-                }
+                dateSection
+                detailSection
+                attendeesSection
+                drillSection
             }
             .navigationTitle(session == nil ? "練習を追加" : "練習を編集")
             .toolbar {
@@ -108,6 +60,71 @@ struct SessionEditView: View {
                 MenuPickerView(alreadySelected: drillSelections) { menu in
                     drillSelections.append(menu)
                 }
+            }
+        }
+    }
+
+    private var dateSection: some View {
+        Section("日時") {
+            DatePicker("日付", selection: $date, displayedComponents: .date)
+            DatePicker("開始時刻", selection: $startTime, displayedComponents: .hourAndMinute)
+            DatePicker("終了時刻", selection: $endTime, displayedComponents: .hourAndMinute)
+        }
+    }
+
+    private var detailSection: some View {
+        Section("詳細") {
+            TextField("場所", text: $location)
+            Picker("種別", selection: $sessionType) {
+                ForEach(SessionType.allCases) { type in
+                    Text(type.displayName).tag(type)
+                }
+            }
+            TextEditor(text: $notes)
+                .frame(minHeight: 80)
+        }
+    }
+
+    private var attendeesSection: some View {
+        Section("出席者") {
+            ForEach(activeStudents) { student in
+                attendeeRow(student: student)
+            }
+        }
+    }
+
+    private func attendeeRow(student: Student) -> some View {
+        Button {
+            toggleAttendee(student)
+        } label: {
+            HStack {
+                Text(student.name)
+                Spacer()
+                if selectedAttendeeIDs.contains(student.id) {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(Color.accentColor)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.primary)
+    }
+
+    private var drillSection: some View {
+        Section("練習メニュー") {
+            ForEach(drillSelections) { menu in
+                Text(menu.name)
+            }
+            .onDelete { offsets in
+                drillSelections.remove(atOffsets: offsets)
+            }
+            .onMove { source, destination in
+                drillSelections.move(fromOffsets: source, toOffset: destination)
+            }
+            Button {
+                isPresentingMenuPicker = true
+            } label: {
+                Label("メニューを追加", systemImage: "plus")
             }
         }
     }
