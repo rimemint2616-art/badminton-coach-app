@@ -195,7 +195,7 @@ struct PlanBuilderView: View {
             VStack(spacing: 24) {
                 Image(systemName: "doc.richtext")
                     .font(.system(size: 60))
-                    .foregroundStyle(.accent)
+                    .foregroundStyle(Color.accentColor)
                 Text("PDFを作成しました")
                     .font(.headline)
                 ShareLink(item: url) {

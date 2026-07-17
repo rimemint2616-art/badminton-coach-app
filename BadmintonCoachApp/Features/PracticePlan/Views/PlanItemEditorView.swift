@@ -106,35 +106,49 @@ struct PlanItemEditorView: View {
     private var courtSection: some View {
         Section("コート割り当て") {
             ForEach($item.courts) { $court in
-                DisclosureGroup("コート\(court.courtNumber)（\(court.players.count)名）") {
-                    ForEach(activeStudents) { student in
-                        Button {
-                            togglePlayer(student, inCourt: court.id)
-                        } label: {
-                            HStack {
-                                Text(student.name)
-                                Spacer()
-                                if court.players.contains(where: { $0.id == student.id }) {
-                                    Image(systemName: "checkmark").foregroundStyle(.accent)
-                                }
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.primary)
-                    }
-                }
+                courtRow(court: court)
             }
             .onDelete { offsets in
                 item.courts.remove(atOffsets: offsets)
             }
 
             Button {
-                let nextNumber = (item.courts.map(\.courtNumber).max() ?? 0) + 1
-                item.courts.append(CourtAssignment(courtNumber: nextNumber))
+                addCourt()
             } label: {
                 Label("コートを追加", systemImage: "plus")
             }
         }
+    }
+
+    private func courtRow(court: CourtAssignment) -> some View {
+        DisclosureGroup("コート\(court.courtNumber)（\(court.players.count)名）") {
+            ForEach(activeStudents) { student in
+                playerToggleRow(student: student, courtID: court.id)
+            }
+        }
+    }
+
+    private func playerToggleRow(student: Student, courtID: UUID) -> some View {
+        let assigned = item.courts.first { $0.id == courtID }?.players.contains { $0.id == student.id } ?? false
+        return Button {
+            togglePlayer(student, inCourt: courtID)
+        } label: {
+            HStack {
+                Text(student.name)
+                Spacer()
+                if assigned {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(Color.accentColor)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.primary)
+    }
+
+    private func addCourt() {
+        let nextNumber = (item.courts.map(\.courtNumber).max() ?? 0) + 1
+        item.courts.append(CourtAssignment(courtNumber: nextNumber))
     }
 
     private func togglePlayer(_ student: Student, inCourt courtID: UUID) {

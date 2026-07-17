@@ -134,7 +134,7 @@ struct CategoryBrowserView: View {
                             Spacer()
                             Image(systemName: "plus.circle.fill")
                                 .font(.title2)
-                                .foregroundStyle(.accent)
+                                .foregroundStyle(Color.accentColor)
                         }
                         .padding()
                         .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: Theme.cornerRadius))
@@ -159,7 +159,7 @@ struct CategoryBrowserView: View {
         VStack(spacing: 10) {
             Image(systemName: systemImage)
                 .font(.system(size: 30))
-                .foregroundStyle(.accent)
+                .foregroundStyle(Color.accentColor)
             Text(title)
                 .font(.headline)
                 .multilineTextAlignment(.center)
