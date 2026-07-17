@@ -30,15 +30,29 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Show available iOS simulators
-        run: xcrun simctl list devices available
+      - name: Show available iOS simulators and pick an iPad
+        id: sim
+        run: |
+          xcrun simctl list devices available
+          # ランナーのイメージ更新でシミュレータ名/OSが変わっても壊れないよう、
+          # 利用可能なiPadシミュレータのUDIDを動的に取得して使う。
+          UDID=$(xcrun simctl list devices available \
+            | grep -i "iPad" \
+            | grep -oE '[0-9A-Fa-f]{8}-([0-9A-Fa-f]{4}-){3}[0-9A-Fa-f]{12}' \
+            | head -1)
+          if [ -z "$UDID" ]; then
+            echo "利用可能なiPadシミュレータが見つかりません" >&2
+            exit 1
+          fi
+          echo "Selected iPad simulator UDID: $UDID"
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
 
       - name: Build for iPad Simulator
         run: |
           xcodebuild build \
             -project BadmintonCoachApp.xcodeproj \
             -scheme BadmintonCoachApp \
-            -destination "platform=iOS Simulator,name=iPad Pro 13-inch (M4),OS=latest" \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
             -skipMacroValidation \
             CODE_SIGNING_ALLOWED=NO
 
@@ -47,6 +61,6 @@ jobs:
           xcodebuild test \
             -project BadmintonCoachApp.xcodeproj \
             -scheme BadmintonCoachApp \
-            -destination "platform=iOS Simulator,name=iPad Pro 13-inch (M4),OS=latest" \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
             -skipMacroValidation \
             CODE_SIGNING_ALLOWED=NO
