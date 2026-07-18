@@ -29,8 +29,15 @@ final class PlanItem {
     var estimatedMinutes: Int
     var notes: String
 
-    /// コートへの選手割り当て。
-    var courts: [CourtAssignment]
+    /// コートへの選手割り当て。SwiftDataの入れ子Codable制約を避けるため、
+    /// JSONエンコードしたDataとして保存し、`courts`経由で読み書きする。
+    var courtsData: Data = Data()
+
+    /// コートへの選手割り当て（`courtsData`のエンコード/デコード）。
+    var courts: [CourtAssignment] {
+        get { (try? JSONDecoder().decode([CourtAssignment].self, from: courtsData)) ?? [] }
+        set { courtsData = (try? JSONEncoder().encode(newValue)) ?? Data() }
+    }
 
     /// 親プラン。削除では消えない（PracticePlan.itemsの.cascadeが唯一の削除経路）。
     var plan: PracticePlan?
@@ -69,7 +76,7 @@ final class PlanItem {
         self.matchCount = matchCount
         self.estimatedMinutes = estimatedMinutes
         self.notes = notes
-        self.courts = courts
+        self.courtsData = (try? JSONEncoder().encode(courts)) ?? Data()
         self.plan = plan
     }
 }
