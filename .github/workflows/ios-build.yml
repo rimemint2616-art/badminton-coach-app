@@ -19,10 +19,13 @@ jobs:
 
       - name: Select Xcode version
         run: |
-          # ランナーイメージ更新で Xcode_16.app の iOS 18.0 プラットフォームが
-          # 未インストールになりビルド不能だったため、ランナー既定（最新の安定版）の
-          # Xcode を使う。
-          sudo xcode-select -switch /Applications/Xcode.app/Contents/Developer
+          # XcodeGenが生成するプロジェクト(フォーマット77)を開ける Xcode 16 系の
+          # うち最新を明示的に選ぶ。macos-14 の既定は Xcode 15.4 で古すぎて開けず、
+          # また新しい Xcode 16.x は iOS 18 SDK/シミュレータを備えるため。
+          LATEST=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$LATEST" ]; then LATEST=/Applications/Xcode.app; fi
+          echo "Using Xcode at $LATEST"
+          sudo xcode-select -switch "$LATEST/Contents/Developer"
           xcodebuild -version
 
       - name: Install XcodeGen
