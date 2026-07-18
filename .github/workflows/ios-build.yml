@@ -45,8 +45,10 @@ jobs:
           # CoreSimulatorのデータコンテナ生成が失敗しテストがクラッシュするため、
           # まずiOS 18系のiPadを優先して選ぶ（無ければ任意のiPadにフォールバック）。
           UUID_RE='[0-9A-Fa-f]{8}-([0-9A-Fa-f]{4}-){3}[0-9A-Fa-f]{12}'
+          # iOS 18系の中でも最新（末尾）ランタイムのiPadを選ぶ。古いランタイムは
+          # ランナーイメージによってはdyld読み込みで壊れていることがあるため。
           IPAD_LINE=$(xcrun simctl list devices available \
-            | awk '/^-- iOS / { use = ($0 ~ /iOS 18/) } use && /iPad/ { print; exit }')
+            | awk '/^-- iOS / { use = ($0 ~ /iOS 18/) } use && /iPad/ { line=$0 } END { print line }')
           UDID=$(printf '%s' "$IPAD_LINE" | grep -oE "$UUID_RE" | head -1)
           if [ -z "$UDID" ]; then
             UDID=$(xcrun simctl list devices available \
