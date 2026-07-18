@@ -9,7 +9,10 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: macos-15
+    # macos-15 の新しいランナーイメージはiOSシミュレータ・ランタイムが壊れており
+    # （Apple純正プロセスすら起動時にdyld/brkクラッシュ）テストを実行できないため、
+    # シミュレータが安定している macos-14 を使う。
+    runs-on: macos-14
     steps:
       - name: Checkout
         uses: actions/checkout@v4
