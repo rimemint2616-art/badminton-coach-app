@@ -84,17 +84,3 @@ jobs:
             -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
             -skipMacroValidation \
             CODE_SIGNING_ALLOWED=NO
-
-      - name: Dump crash reports on failure (diagnostics)
-        if: failure()
-        run: |
-          echo "===== Host DiagnosticReports ====="
-          ls -la ~/Library/Logs/DiagnosticReports/ 2>/dev/null || true
-          for f in ~/Library/Logs/DiagnosticReports/*.ips; do
-            [ -e "$f" ] || continue
-            echo "----- $f -----"; head -140 "$f"
-          done
-          echo "===== Simulator DiagnosticReports ====="
-          find ~/Library/Developer/CoreSimulator/Devices -name '*.ips' 2>/dev/null | head -10 | while read -r f; do
-            echo "----- $f -----"; head -140 "$f"
-          done

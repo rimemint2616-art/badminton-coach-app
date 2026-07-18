@@ -15,10 +15,9 @@ enum SchemaV1: VersionedSchema {
             Feedback.self,
             PracticeMenu.self,
             SessionDrillItem.self,
-            ReportRecord.self
-            // 切り分け実験: 新モデルを一時的に外し、テストクラッシュが新モデル起因か確認する
-            // PracticePlan.self,
-            // PlanItem.self
+            ReportRecord.self,
+            PracticePlan.self,
+            PlanItem.self
         ]
     }
 }
